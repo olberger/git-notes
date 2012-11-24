@@ -1,0 +1,1426 @@
+% Created 2012-11-23 ven. 23:42
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{soul}
+\usepackage{textcomp}
+\usepackage{marvosym}
+\usepackage{wasysym}
+\usepackage{latexsym}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\tolerance=1000
+\providecommand{\alert}[1]{\textbf{#1}}
+
+\title{git concepts simplified}
+\author{Sitaram Chamarty, sitaramc@gmail.com}
+\date{Adapted in slides deck by Olivier Berger from the HTML version at \url{http://sitaramc.github.com/gcs/}}
+\hypersetup{
+  pdfkeywords={},
+  pdfsubject={},
+  pdfcreator={Emacs Org-mode version 7.8.11}}
+
+\usetheme{Montpellier}\usepackage[french]{babel}\usefonttheme{default}\definecolor{links}{HTML}{2A1B81}\hypersetup{colorlinks,linkcolor=,urlcolor=links}\usepackage{listings}\usepackage{color}
+\definecolor{debianred}{rgb}{.780,.000,.211} % 199,0,54
+\definecolor{debianblue}{rgb}{0,.208,.780} % 0,53,199
+\definecolor{debianlightbackgroundblue}{rgb}{.941,.941,.957} % 240,240,244
+\definecolor{debianbackgroundblue}{rgb}{.776,.784,.878} % 198,200,224
+\usecolortheme[named=debianbackgroundblue]{structure}
+\setbeamercolor{titlelike}{fg=debianblue}
+\setbeamercolor{sidebar}{fg=debianred,bg=debianbackgroundblue}
+\setbeamercolor{palette sidebar primary}{fg=debianred}
+\setbeamercolor{palette sidebar secondary}{fg=debianred}
+\setbeamercolor{palette sidebar tertiary}{fg=debianred}
+\setbeamercolor{palette sidebar quaternary}{fg=debianred}
+\setbeamercolor{section in toc}{fg=debianred}
+\setbeamercolor{subsection in toc}{parent=debianred}
+\setbeamercolor{item}{fg=debianred}
+\setbeamercolor{block title}{fg=debianblue}
+\usepackage{listings}
+\usepackage{color}
+\lstdefinelanguage{turtle}{
+alsoletter={:},
+morekeywords=[1]{@prefix, a, admssw},
+morestring=[b][\color{blue}\itshape]",
+morecomment=[s][\color{debianred}]{<}{>}, % missusing comments for URIrefs
+otherkeywords={^, [, ], (, )},%
+%otherkeywords=[2]{<, >},% for URIrefs
+sensitive=false,
+}[keywords,comments,strings]
+\usepackage[export]{adjustbox}
+\begin{document}
+
+\maketitle
+
+
+
+
+
+
+
+
+
+\lstset{keywordstyle=\color{blue},
+  commentstyle=\color{red},
+  stringstyle=\color{green}
+}
+
+
+
+\section{introduction}
+\label{sec-1}
+\begin{frame}
+
+
+\small
+\begin{itemize}
+\item The title of this page used to be ``git for computer scientists -- my
+  version'', said title being inspired by a much older page at
+  \href{http://eagain.net/articles/git-for-computer-scientists}{http://eagain.net/articles/git-for-computer-scientists}.
+\item Following a discussion on IRC where someone said I copied the idea
+  but did not acknowledge the original, I first added the previous
+  para, than sat down to re-read both looking for any similarities.  I
+  did not find anything significant except the title itself.  (Here's
+  a quick check you can do in a few seconds: click on the ``chapter
+  toc'' above to see the structure of this one, then try and do a
+  mental ``diff'' with the old version.)
+\item Anyway, as a result of this re-look I remembered why I actually
+  wrote it: because I felt the older one was too abstract and terse
+  for a real newbie.  I also realised that my version is not really
+  targeted at computer scientists specifically, and arguably
+  \href{https://github.com/sitaramc/git-notes/commit/13a2ffaca484a1136c256dc72e93a88eff8fd4ff}{never was}.
+\item So I changed the title, carefully picking one that would not affect
+  the URL because I know people have bookmarked it.
+\end{itemize}
+\end{frame}
+\section{basics}
+\label{sec-2}
+\begin{frame}
+\frametitle{the 4 git object types}
+\label{sec-2-1}
+
+
+\begin{itemize}
+\item Git keeps all its data inside a special directory called \texttt{.git} at
+  the top level of your repository.  Somewhere in there is what we
+  will simply call the \emph{object store} (if you're not comfortable with
+  that phrase, pretend it's some sort of database).
+\item Git knows about 4 types of objects:
+\begin{itemize}
+\item \textbf{blob} -- each file that you add to the repo is turned into a blob
+    object.
+\item \textbf{tree} -- each directory is turned into a tree object.
+
+    Obviously, a tree object can contain other tree objects and blob objects,
+    just like a directory can contain other directories and files.
+\item \textbf{commit} -- a commit is a snapshot of your working tree at a point in
+    time, although it contains a lot of other information also.
+\item \textbf{tag} -- we will see this type a bit later.
+\end{itemize}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{what is a SHA}
+\label{sec-2-2}
+
+
+\tiny
+\begin{itemize}
+\item A commit is uniquely identified by a 160-bit hex value (the `SHA'). This is computed from the tree, plus the following pieces of
+  information:
+\begin{itemize}
+\item \tiny
+    the SHA of the parent commit(s) -- every commit except the very
+    first one in the repo has at least one parent commit that the change
+    is based upon.
+\item the commit message -- what you type in the
+    editor when you commit
+\item the author name/email/timestamp the
+    committer name/email/timestamp
+\end{itemize}
+\item (Actually, all 4 git objects types are identified by SHAs, but of
+  course they're computed differently for each object type.  However,
+  the SHAs of the other object types are not relevant to this discussion).
+\item In the end, as I said, it's just a large, apparently random looking,
+  number, which is actually a cryptographically-strong checksum.  It's
+  usually written out as 40 hex digits.
+\item Humans are not expected to remember this number.  For the purposes
+  of this discussion, think of it as something similar to a memory
+  address returned by malloc().
+\item It is also GLOBALLY unique!  No commit in any repo anywhere in the
+  world will have the same SHA.  (It's not a mathematical
+  impossibility, but just so extremely improbable that we take it as
+  fact.  If you didn't understand that, just take it on faith).
+\item An example SHA: \texttt{a30236028b7ddd65f01321af42f904479eaff549}
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{what is a repo}
+\label{sec-2-3}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-2-3-1}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-2-3-1-1}
+
+
+A repository (`repo') is a graph of commits.  
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-2-3-1-2}
+
+
+
+
+\includegraphics[scale=0.45,center]{plain_871c88f70e0c2a1852adef3251ee3524990fbf53.png}
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-2-3-2}
+
+
+\small
+In our figures, we represent
+SHAs with numbers for convenience.  
+
+We also represent time going
+upward (bottom to top).
+\end{frame}
+\begin{frame}
+\frametitle{why are the arrows backward in your pictures?}
+\label{sec-2-4}
+
+
+\begin{itemize}
+\item So why are the arrows pointing backward?
+\item Well\ldots{} every commit knows what its parent commit is (as described
+  in the ``what is a SHA'' section above).  But it can't know what it's
+  child commits are -- they haven't been made yet!
+\item Therefore a repo is like a single linked list.  It cannot be a
+  double linked list -- this is because any change to the contents
+  would change the SHA!
+\end{itemize}
+\end{frame}
+\section{branches and tags}
+\label{sec-3}
+\begin{frame}
+\frametitle{branch}
+\label{sec-3-1}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-1-1}
+
+
+\begin{itemize}
+\item Traditionally, the top of a linked list has a name.
+\item That name is a BRANCH
+  name.
+\item We show branch names in green circles.
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-1-2}
+
+
+
+\includegraphics[scale=0.40,center]{fig0002_83e3781014b6832f90ece02dc891a2db450bb610.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{more than one branch}
+\framesubtitle{(a.k.a ``more than one child commit'')}
+\label{sec-3-2}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-2-1}
+
+\begin{itemize}
+\item Remember we said a repo is a GRAPH?
+\item Specifically, more than one child node
+  may be pointing at the same parent node.
+\item In this case, each `leaf node' is a
+  branch, and will have a name.
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-2-2}
+
+
+
+
+\includegraphics[scale=0.35,center]{fig0003_c7468ba73a31ccf8d57a10d4123dc639be1690d0.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{more than one parent commit (1/2)}
+\label{sec-3-3}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-3-3-1}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-3-1-1}
+
+\begin{itemize}
+\item Well we can't keep creating more branches without eventually merging them
+  back.
+\item So let's say ``feature X'' is now tested enough to be merged into the
+  main branch, so you 
+
+\begin{verbatim}
+   git merge feature_X
+\end{verbatim}
+\item Here's what you get:
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-3-1-2}
+
+
+
+
+\includegraphics[scale=0.35,center]{fig0004_f5234720e50dd919d977335f09fe8bcec79fe42c.png}
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-3-3-2}
+
+
+\tiny
+Notice that commit 8 now has 2 parents, showing that it is a ``merge commit''.
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{more than one parent commit (2/2)}
+\label{sec-3-4}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-4-1}
+
+\begin{itemize}
+\item At this point, it's quite common to delete the feature branch, especially if
+  you anticipate no more ``large'' changes.
+\item So you can run 
+
+\begin{verbatim}
+   git branch -d feature_X
+\end{verbatim}
+\item which gives you this:
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-4-2}
+
+
+
+
+\includegraphics[scale=0.35,center]{fig0005_5330947b2e1b320772d370c0acd5b996e102c778.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{current branch/checked out branch}
+\label{sec-3-5}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-5-1}
+
+\begin{itemize}
+\item There is a notion of a `currently checked out' branch.
+\item This is denoted by a
+  special ref called HEAD.
+\item HEAD is a \emph{symbolic} ref, which points to the
+  `current branch'.
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-5-2}
+
+
+
+
+
+\includegraphics[scale=0.35,center]{HEAD_ba98f3b201b7eefcef3eab3c4849cc60f490fab0.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{committing}
+\label{sec-3-6}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-6-1}
+
+
+\begin{itemize}
+\item When you make a new commit, the current branch moves.
+\item Technically, whatever
+  branch HEAD is pointing to will move.
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-6-2}
+
+
+\includegraphics[scale=0.35,center]{fig0007_4b422faa7bc6d67df08dd0b8e4cc093c4a016d41.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{naming non-leaf nodes (1/2)}
+\label{sec-3-7}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-3-7-1}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-7-1-1}
+
+
+\begin{itemize}
+\item It's not just `leaf' nodes, but inner nodes can also have names.
+\item Recall the result of merging \texttt{feature\_X} earlier (see the \emph{more than one parent commit} section):
+\item At this point, you could leave \texttt{feature\_X} as it is forever.
+\item Or you could
+  delete the branch (as we showed in that section), in which case that label
+  would simply disappear.  (The commit it points to is safely reachable from
+  \texttt{master} because of the merge.)
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-7-1-2}
+
+
+\includegraphics[scale=0.35,center]{fig0008_b68b4972ab3311a9974de475178c72f07e267145.png}
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-3-7-2}
+
+
+\small
+\end{frame}
+\begin{frame}
+\frametitle{naming non-leaf nodes (2/2)}
+\label{sec-3-8}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-8-1}
+
+
+\begin{itemize}
+\item You can also continue to develop on the \texttt{feature\_X} branch, further refining
+  it with a view to once again merging it at some later point in time.
+\end{itemize}
+
+\tiny
+Although not relevant to the topic of this document, I should
+mention that the usual practice is to first merge master back into \texttt{feature\_X}
+to make sure it has all the other stuff that master may have acquired till
+now (this is shown by commit 9 below) before continuing further
+development:
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-8-2}
+
+
+\includegraphics[scale=0.30,center]{fig0009_2d47aedea857c9356c8416aaca1336ad96d82a58.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{tags}
+\label{sec-3-9}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-3-9-1}
+
+
+\begin{itemize}
+\item More commonly, inner nodes are TAGS.
+\item We show tag names in yellow circles.
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-3-9-2}
+
+
+\includegraphics[scale=0.35,center]{fig0010_748cc4778602d9eeb42553b0a2fded53f79ab6ef.png}
+\end{column}
+\end{columns}
+\end{frame}
+\section{the difference between branches and tags}
+\label{sec-4}
+\begin{frame}
+\frametitle{the difference between branches and tags}
+\label{sec-4-1}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-4-1-1}
+
+
+\begin{itemize}
+\item The main difference between a branch and a tag is branches move, tags don't.
+\item When you make a commit with the ``master'' branch currently checked out, master
+  will move to point to the new commit.
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-4-1-2}
+
+
+\includegraphics[scale=0.30,center]{fig0011_c65e07e618ba6e332c7f74b1931cce8c5eeb6b06.png}
+\end{column}
+\end{columns}
+\end{frame}
+\section{digressions}
+\label{sec-5}
+\begin{frame}
+\frametitle{what is a git URL?}
+\label{sec-5-1}
+
+
+
+\begin{itemize}
+\item Git repos are accessed by providing a URL.
+\item There are typically 4 kinds of Git URLs:
+\begin{itemize}
+\item ssh: like \texttt{ssh://[user@]host.xz[:port]/path/to/repo.git/}
+\item http: like \texttt{http[s]://host.xz[:port]/path/to/repo.git/}
+\item git: like \texttt{git://host.xz[:port]/path/to/repo.git/} -- note that this is an
+      unauthenticated protocol suitable only for allowing downloads of open
+      source or similar software
+\item local file: like \texttt{file:///full/path/to/reponame}
+\end{itemize}
+\end{itemize}
+
+(see `man git-clone' for all the allowed syntaxes for git URLs).
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{what is a ``remote''?}
+\label{sec-5-2}
+
+
+\begin{itemize}
+\item A remote is a short name (like an alias) used to refer to a specific git
+  repository.
+\item Instead of always saying 
+\begin{verbatim}
+   git fetch git://sitaramc/gitolite
+\end{verbatim}
+
+  you can add that as a remote and use that short name instead of the
+  long URL.
+\item For convenience, a `remote' called `origin' is automatically created
+  when you clone a repo, pointing to the repo you cloned from.
+\end{itemize}
+\end{frame}
+\section{local and remote repos}
+\label{sec-6}
+\begin{frame}
+\frametitle{remote branches}
+\label{sec-6-1}
+\begin{columns}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-6-1-1}
+
+
+\begin{itemize}
+\item Git is a distributed version control system.
+\item So when you clone someone's repo, you get all the branches in that
+  one.
+\item Remote branches are prefixed by the name of the remote, and we show
+  them in orange.
+\end{itemize}
+\end{column}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-6-1-2}
+
+
+\includegraphics[scale=0.30,center]{fig0012_b2f6cb446ec4ab720f4da8627db9f9aa4d0e8eff.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{multiple remotes}
+\label{sec-6-2}
+\begin{columns}
+\begin{column}{0.3\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-6-2-1}
+
+
+You can have several remotes.
+\end{column}
+\begin{column}{0.7\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-6-2-2}
+
+
+\includegraphics[scale=0.35,center]{fig0013_4b117b38773be6fb5d9e7e05d92f12e08988ba41.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{fetching and merging from another repo (1/2)}
+\label{sec-6-3}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-6-3-1}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-6-3-1-1}
+
+
+Now let's say Sita's repo had a couple of new commits on its master,
+and you run
+\begin{verbatim}
+ git fetch sitas-repo
+\end{verbatim}
+\end{column}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-6-3-1-2}
+
+
+\includegraphics[scale=0.35,center]{fig0014_6fdc8fca9a9c8eda5772fb47944ed0596993be0d.png}
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-6-3-2}
+
+\small
+(We have pruned the graph a litle for clarity, showing only the
+relevant commits; the rest of the commits and branches are assumed to
+be present as in the previous picture).
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{fetching and merging from another repo (2/2)}
+\label{sec-6-4}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-6-4-1}
+
+
+\begin{itemize}
+\item Now you want to merge Sita's master branch into yours.
+\item Since your master does
+  not have any commits that Sita's master doesn't have (i.e., Sita's master is
+  like a superset of yours), running 
+
+\begin{verbatim}
+   git merge sitas-repo/master
+\end{verbatim}
+
+  will get you this:
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-6-4-2}
+
+
+\includegraphics[scale=0.35,center]{fig0015_ebf44deedcae3bf9a5a56479a39a52259804818f.png}
+\end{column}
+\end{columns}
+\end{frame}
+\section{the object store}
+\label{sec-7}
+\begin{frame}
+\frametitle{the object store}
+\label{sec-7-1}
+
+
+\begin{itemize}
+\item Git stores all your data in an ``object store''.
+\item There are 4 types of objects in this store: files (called ``blobs''),
+  trees (which are directories+files), commits, and tags.
+\item All objects are referenced by a 160-bit SHA.
+\end{itemize}
+
+\tiny
+(Details, if you like: a blob is the lowest in the hierarchy.  One or
+more blobs and trees make a tree.  A commit is a tree, plus the SHA of
+its parent commit(s), the commit message, author/committer names and
+emails, and timestamps.  Under normal usage, you don't need to deal
+with all this).
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{what is a repo (again)}
+\label{sec-7-2}
+
+ 
+\begin{itemize}
+\item Earlier, we saw that a repo was a graph of commits.
+\item At the file system level, however, it is basically a directory called
+  \texttt{.git} which looks somewhat like this
+\end{itemize}
+
+\tiny
+
+\begin{verbatim}
+ $ ls -al .git
+ total 40
+ drwxrwxr-x 7 sitaram sitaram 4096 Sep 14 18:54 ./
+ drwx------ 3 sitaram sitaram 4096 Sep 14 18:54 ../
+ drwxrwxr-x 2 sitaram sitaram 4096 Sep 14 18:54 branches/
+ -rw-rw-r-- 1 sitaram sitaram   92 Sep 14 18:54 config
+ -rw-rw-r-- 1 sitaram sitaram   73 Sep 14 18:54 description
+ -rw-rw-r-- 1 sitaram sitaram   23 Sep 14 18:54 HEAD
+ drwxrwxr-x 2 sitaram sitaram 4096 Sep 14 18:54 hooks/
+ drwxrwxr-x 2 sitaram sitaram 4096 Sep 14 18:54 info/
+ drwxrwxr-x 4 sitaram sitaram 4096 Sep 14 18:54 objects/
+ drwxrwxr-x 4 sitaram sitaram 4096 Sep 14 18:54 refs/
+\end{verbatim}
+\end{frame}
+\begin{frame}
+\frametitle{objects and branches/tags (1/4)}
+\label{sec-7-3}
+
+
+\begin{itemize}
+\item Hg folks should read this section carefully.
+\item Among various crazy notions Hg
+  has is one that encodes the branch name within the commit object in some way.
+  Unfortunately, Hg's vaunted ``ease of use'' (a.k.a ``we support Windows better
+  than git'', which in an ideal world would be a negative, but in this world
+  sadly it is not) has caused enormous takeup, and dozens of otherwise excellent
+  developers have been brain-washed into thinking that is the only/right way.
+\item I hope this section gives at least a few of them a ``light-bulb'' moment.
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{objects and branches/tags (2/4)}
+\label{sec-7-4}
+
+\begin{itemize}
+\item The really, \emph{really} important thing to understand is that the object store
+  doesn't care where the commit came from or what ``branch'' it was part of when
+  it entered the object store.  Once it's there, it's there!
+\item Think back to these three diagrams.
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{objects and branches/tags (3/4)}
+\label{sec-7-5}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-7-5-1}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-7-5-1-1}
+
+
+
+
+The first is before you did a fetch.
+\end{column}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-7-5-1-2}
+
+
+\includegraphics[scale=0.35,center]{fig0016_64d9e05e46f0aeec495e1cff00ea786184448e1c.png}
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-7-5-2}
+
+
+The next two figures are after \texttt{git fetch sitas-repo} and \texttt{git merge sitas-repo/master}, respectively.  
+\end{frame}
+\begin{frame}
+\frametitle{objects and branches/tags (4/4)}
+\label{sec-7-6}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-7-6-1}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-7-6-1-1}
+
+
+\small
+
+\texttt{git fetch sitas-repo}
+
+
+\includegraphics[scale=0.25,center]{fig0017_50c51ea8a37393f399c17ccd1379435ef744cb45.png}
+
+
+
+\tiny
+The fetch command added two new commits (10 and 11) to your object
+store, along with any other objects those commits reference.
+\end{column}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-7-6-1-2}
+
+
+\small
+\texttt{git merge sitas-repo/master}
+
+
+\includegraphics[scale=0.25,center]{fig0018_ec592f40ef7db770f5a4e6a1f428d73240f7b94e.png}
+
+
+
+
+\tiny
+However, note that commits 10 and 11 did not change in any way simply because
+they are now in \emph{your local ``master'' branch}.  They continue to have the
+same SHA values and the object store does not change as a result of this
+command at all.
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-7-6-2}
+
+
+\small
+
+All you did was move a pointer from one node to another.
+\end{frame}
+\section{advanced operations}
+\label{sec-8}
+
+
+We'll now show some advanced operations with the aid of this same tree.
+\begin{frame}
+\frametitle{merging (1/3)}
+\label{sec-8-1}
+
+
+First, let's do merging.  
+
+
+\begin{itemize}
+\item The merge you saw earlier was what is called a
+  ``fast-forward'' merge, because your local master did not have any commits that
+  the remote branch you were merging did not have.
+\item In practice, this is rare, especially on an active project with many
+  developers.
+\item So let's see what that looks like.
+\end{itemize}
+\end{frame}
+\begin{frame}
+\begin{columns}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-2-1}
+
+The starting point was this:
+\end{column}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-2-2}
+
+
+\includegraphics[scale=0.35,center]{fig0019_bc2186b3c66956fa9c096aa318dd0ede48128c58.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{merging (2/3)}
+\label{sec-8-3}
+\begin{columns}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-3-1}
+
+\begin{itemize}
+\item Now, you made some changes on your local master.
+\item Meanwhile, sitas-repo has
+  had some changes which you got by doing a fetch:
+\end{itemize}
+\end{column}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-3-2}
+
+
+
+\includegraphics[scale=0.35,center]{fig0020_413ca56846597a99a05aaa91ad55c3918db280d2.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{merging (3/3)}
+\label{sec-8-4}
+\begin{columns}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-8-4-1}
+
+
+When you merge, the end result will usually look like this:
+\end{column}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-4-2}
+
+
+
+\includegraphics[scale=0.35,center]{fig0021_f9da9b91a3769f38c2aa512a3ea5da4337445a34.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{cherry-pick (1/3)}
+\label{sec-8-5}
+
+
+\begin{itemize}
+\item A cherry-pick is not very commonly done -- in well designed workflows it
+  should actually be rare.
+\item However, it's a good way to illustrate an important
+  concept in git.
+\item We said before that a commit represents a certain set of files and
+  directories, but since most commits have only one parent, you can think of a
+  commit as representing a set of changes too.  (In fact, most older VCSs do
+  this).
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{cherry-pick (2/3)}
+\label{sec-8-6}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-8-6-1}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-8-6-1-1}
+
+
+
+\begin{itemize}
+\item Let's say one of your collaborators (this mythical ``Sita'' again!) made a whole
+  bunch of changes to his copy of the repo.
+\item You don't like most of these
+  changes, except one specific change which you would like to bring in to your
+  repo.
+\item The starting point is this:
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-6-1-2}
+
+
+\includegraphics[scale=0.30,center]{fig0022_3547b70790c2e9f8d35f312da09cc919a7d40154.png}
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-8-6-2}
+
+
+\small
+In this, sitas-repo has 3 commits on his master (12, 13, and 14) and you are
+only interested in the change that commit 13 made.
+\end{frame}
+\begin{frame}[fragile]
+
+\small
+\begin{verbatim}
+ git cherry-pick sitas-repo/master~1
+\end{verbatim}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-8-7-1}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-8-7-1-1}
+
+
+\small
+
+This results in the following commit graph.
+
+\tiny
+
+\begin{itemize}
+\item Don't worry about the meaning of the \texttt{\textasciitilde{}1} for now (although you ought to be
+  able to guess!)
+\end{itemize}
+
+
+\begin{itemize}
+\item Note that I've called the new commit ``13a''.  This is to reflect the fact that,
+  while the \textbf{change} made is the same as in the original commit 13, the \textbf{SHA}
+  will not be the same anymore (new parent commit, new ``tree'', new committer
+  name/email, commit time, etc).
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-7-1-2}
+
+
+
+\includegraphics[scale=0.30,center]{fig0023_33fb9e03898c4924b4e66175c5648985d37e6dfb.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{rebasing (1/4)}
+\label{sec-8-8}
+
+
+
+\begin{itemize}
+\item Instead of merging, let's say you wanted to rebase your commits on top of
+  Sita's commits.
+\item First of all, what is rebasing?
+\item It's basically transplanting a series of
+  changes from one point in the graph to another point.
+\item So if you guessed that a rebase was (in principle) a series of cherry-picks,
+  you'd be pretty close, at least from a concept point.
+\end{itemize}
+\end{frame}
+\begin{frame}
+\frametitle{rebasing (2/4)}
+\label{sec-8-9}
+\begin{columns}
+\begin{column}{0.6\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-8-9-1}
+
+\begin{itemize}
+\item So let's use a similar example as in the merge example before, but
+  instead of sitas-repo, the new commits are in ``origin'' (which is the
+  ``main'' server for this project).
+\item You had your own commits, and you did a \texttt{git fetch origin} which
+  brought in the latest commits from ``origin'', so it looks like:
+\end{itemize}
+\end{column}
+\begin{column}{0.4\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-9-2}
+
+
+\includegraphics[scale=0.35,center]{fig0024_2399001309c0e59d7dac3ab46ac78bffc2e3c3ff.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+\frametitle{rebasing (3/4)}
+\label{sec-8-10}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-8-10-1}
+\begin{column}{0.65\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-8-10-1-1}
+
+
+\small
+\begin{itemize}
+\item Now, instead of merging ``origin/master'' into your local master, you want to
+  rebase your commits on top of ``origin/master''.
+\item That is, you want to pretend
+  your local changes were made \textbf{after} commit 13 on the origin.
+\item So you run \texttt{git   rebase origin/master}, and this is the result:
+\end{itemize}
+
+\tiny
+
+Note that again, we're ignoring command syntax and nuances here.  This is
+about concepts.  
+
+Also again, note that the SHAs of the 2 commits have changed,
+since they now have new parents, trees, etc., so we represent that by
+suffixing an ``a''.
+
+Note the \textbf{dangling commits} 10 and 11.  No branch is now pointing to them, so
+they're basically wasted disk space.  (They can be examined and reclaimed
+using the `reflog', or if left alone they will eventually get garbage
+collected).
+\end{column}
+\begin{column}{0.35\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-8-10-1-2}
+
+
+\includegraphics[scale=0.30,center]{fig0025_5fc2d9f834c741b90931a6029d831efa7a5b69b1.png}
+\end{column}
+\end{columns}
+%% \textbf{:B\_ignoreheading:}
+\label{sec-8-10-2}
+\end{frame}
+\begin{frame}
+\frametitle{rebasing (4/4)}
+\label{sec-8-11}
+
+
+
+\begin{itemize}
+\item Unlike cherry-pick, a rebase is quite often done in real life.
+\item Rebase also has some other forms.
+\item This form is one, but the most common is when a developer wants to
+  re-arrange his own local commits in a more logical sequence before
+  publishing/pushing them.
+\end{itemize}
+\end{frame}
+\begin{frame}
+
+\small
+I often do the eqvt of changing this:
+
+
+
+
+\includegraphics[scale=0.25,center]{fig0026_fa8430fdb4f443a3bee5287d42e31cb9b0cf81d3.png}
+
+
+
+where ``22delta'' is a minor fixup to ``22'', into
+
+
+
+
+
+\includegraphics[scale=0.25,center]{fig0027_a003b5b50af9eba670fab055ee5c0dfa2095f076.png}
+
+
+
+
+using \texttt{git rebase -i}.
+
+\tiny
+\begin{itemize}
+\item Notice that since commit 22 changes its SHA, all its child commits
+  -- now rebased -- will also have new SHAs.
+\item This is why you should (almost) never rebase branches that have already been published.
+\end{itemize}
+\end{frame}
+\section{the confusion about checkout versus reset}
+\label{sec-9}
+\begin{frame}
+\frametitle{the confusion about checkout versus reset}
+\label{sec-9-1}
+
+
+\tiny
+\textbf{Please note} that this section completely ignores the
+myriad options available to both these commands, especially the ones that
+pertain to the index and the working tree.  All we're trying to do is show
+what the commands do to the branch and \texttt{HEAD}, nothing else.  As such, this is
+not a complete discussion of those two commands, but only about one aspect of
+them.
+
+In fact, the major reason these two sometimes get confused is that people
+eventually learn that \texttt{git checkout -f} and \texttt{git reset -{}-hard} do the same
+thing, and then extrapolate that to other options.  Just remember that both
+those are specific cases of two quite different commands that just happen to
+``meet'' there, in some sense.
+
+\normalsize
+The basic difference is very simple:
+
+\begin{itemize}
+\item checkout changes what your current branch is (i.e., it changes where HEAD
+    is pointing to)
+\item reset changes which commit the current branch is pointing to
+\end{itemize}
+\end{frame}
+\begin{frame}
+
+\small
+\begin{itemize}
+\item Here're some pictures that show you what's happening.  (Note that
+  commits below 6 and 7 are omitted for brevity).
+\item The first picture is the common starting point.
+\item The next two show the effect of a checkout and a reset, respectively.
+\item Notice which line is moving in each picture, compared to the starting point.
+\end{itemize}
+\begin{columns} % \textbf{:B\_columns:}
+\label{sec-9-2-1}
+\begin{column}{0.3\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-9-2-1-1}
+
+
+
+\includegraphics[scale=0.35,center]{fig0028_6176dd6ba339fe75cba300fa4ca72d64840d98ad.png}
+\end{column}
+\begin{column}{0.3\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-9-2-1-2}
+
+
+
+\includegraphics[scale=0.35,center]{fig0030_b22ad6d9f4367f3b3639da0af5953a6b0d89f813.png}
+\end{column}
+\begin{column}{0.3\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-9-2-1-3}
+
+
+
+\includegraphics[scale=0.35,center]{fig0032_8745fc1cd59dd701c524955a052c9448b0de4699.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+
+\begin{itemize}
+\item As you can see, your current branch, when you start, is ``master'' (indicated by
+  where HEAD is pointing).
+\item A ``checkout'' changes what is your current branch -- it is now ``devel'', and so
+  any new commits you make now will go on devel, not master.
+\item On the other hand, a reset changes what commit your current branch points to.
+  Your branch is still master, but now it is pointing to what could potentially
+  be a \textbf{completely} different history.
+\end{itemize}
+
+\small
+(Notice that, like in the rebase example, there is now a dangling commit --
+one that cannot be reached by any branch.  It is still accessible using the
+`reflog' and will eventually get garbage collected)
+\end{frame}
+\section{detached HEAD and all that}
+\label{sec-10}
+\begin{frame}
+\frametitle{detached HEAD and all that}
+\label{sec-10-1}
+
+
+\footnotesize
+
+\begin{itemize}
+\item All this time you have seen HEAD pointing to a branch name, and the branch
+  itself pointing to a commit.
+\item Then, when you make a commit, the branch moves
+  to the new commit (although HEAD still continue to point to the branch name).
+\item If you want to recap, here's a look at just the part of the tree that concerns
+  us, in a simple before/after display:
+\end{itemize}
+\begin{columns}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_block:BMCOL:}
+\label{sec-10-1-1}
+
+
+
+\includegraphics[scale=0.25,center]{fig0033_0729adf6244bca86c242db48cfc8caa52e90e475.png}
+\end{column}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-10-1-2}
+
+
+\includegraphics[scale=0.25,center]{fig0034_763e8d92bc4cd0744f21060bec94372deec340a8.png}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}
+
+Now see what happens when you \texttt{git checkout v1.0}:
+
+\includegraphics[scale=0.35,center]{fig0035_ff2335145de7e3e606fd09c9c8c61cb58fd603ec.png}
+
+
+
+Notice the subtle difference?  
+
+\begin{itemize}
+\item HEAD is no longer a \emph{symbolic} ref (i.e., pointing to a real
+  branch).
+\item Instead, it is pointing directly to a commit.
+\end{itemize}
+\end{frame}
+\begin{frame}[fragile]
+
+\footnotesize
+\begin{itemize}
+\item In real terms, this is literally what happens.
+\item When you had ``master'' checked
+  out, the contents of HEAD (it's just a file in .git) are simply
+
+\begin{verbatim}
+   ref: refs/heads/master
+\end{verbatim}
+\item If you \texttt{git checkout devel} (which is a local branch), it becomes
+
+\begin{verbatim}
+   ref: refs/heads/devel
+\end{verbatim}
+\item However, remember what we said earlier?
+\item Only branches can move, tags cannot.
+\item So when you \texttt{git checkout v1.0}, HEAD now contains
+
+\begin{verbatim}
+   90fed7792746a9a33e24059fb171f6bbb6ffebe6
+\end{verbatim}
+
+  or some such hash.
+\item If it did what it did for local branches, it would imply
+  the tag would move, right?
+\item Which it shouldn't -- wouldn't be much of a tag if
+  it moved!
+\end{itemize}
+\end{frame}
+\begin{frame}
+
+\tiny
+\begin{columns}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-10-4-1}
+
+
+So from this point on, if you make a commit, only HEAD changes, nothing else,
+since it is no longer ``attached'' to any local branch name''
+
+
+\includegraphics[scale=0.30,center]{fig0036_e9b112cbc6589de94d3698ff4577c71c0efac7ff.png}
+\end{column}
+\begin{column}{0.5\textwidth}
+%% \textbf{:B\_ignoreheading:BMCOL:}
+\label{sec-10-4-2}
+
+
+The reason this is considered dangerous is that, if you now do \texttt{git checkout master}, you get this:
+
+
+\includegraphics[scale=0.30,center]{fig0037_5a9541761b6c9ba500da97913c0a98de73b4c9ea.png}
+
+
+
+\begin{itemize}
+\item Notice what happened to your new commit 8?
+\item It's dangling.  Unreachable.
+\end{itemize}
+(Except by the reflog, of course, but beginners can get shaken up!)
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{other ways to detach your HEAD}
+\label{sec-10-5}
+
+
+\tiny
+
+\begin{itemize}
+\item The most common way to get into a detached HEAD state is to check out a remote
+  branch (like \texttt{git checkout origin/branch}), without realising that you need to
+  make a local copy before you make commits on it.
+
+  (Side note: the correct syntax to create and checkout a
+  local branch starting from a remote branch used to be \texttt{git checkout -t -b   branch origin/branch}, but modern gits will do the right thing if you simply
+  say \texttt{git checkout branch}; yaay for progress!)
+\item The reason \texttt{git checkout origin/branch} creates a detached HEAD is that, while
+  remote branches can move, they can only do so as a result of a \texttt{git fetch} or
+  equivalent.  After all, they are meant to track what the \textbf{remote} has, so it
+  wouldn't make sense for them to acquire \textbf{local} commits!
+\item Here are various ways to detach HEAD:
+
+\begin{verbatim}
+   git checkout origin/master  # (described above)
+   git checkout master^        # parent of master
+   git checkout HEAD~2         # grandparent of current HEAD
+   git checkout tagname        # since you cant commit to a tag!
+   git checkout <SHA>          # hex digits forming a full or partial SHA
+   git checkout master^0       # (see note below)
+\end{verbatim}
+\item These will all make the file called \texttt{HEAD} contain the actual
+  (40-hex-digit) SHA of the corresponding commit instead of some
+  string like \texttt{ref: refs/heads/branch}.
+\item That last one (\texttt{git checkout master\textasciicircum{}0}) is interesting.  The
+  \texttt{master\textasciicircum{}0} notation means ``the actual commit that master points to'',
+  so it's just like saying \texttt{git checkout <SHA>}.
+\end{itemize}
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{re-attaching the HEAD}
+\label{sec-10-6}
+
+
+\begin{itemize}
+\item Modern git will warn you about losing commits on a detached HEAD if you're at
+  the command line, and tell you how to recover (immediately).
+\item Recovery is quite easy.  If you realised you're on a detached HEAD \textbf{before}
+  you switched to some other branch:
+
+\begin{verbatim}
+   git checkout -b newbranch
+\end{verbatim}
+\item If you switched, possibly made some commits, and \textbf{then} realised you lost some
+  commits on a detached HEAD, you need to check the reflog to find the lost HEAD
+  and switch to that using some command like:
+
+\begin{verbatim}
+   git branch newbranch HEAD@{1}
+\end{verbatim}
+\end{itemize}
+\end{frame}
+\begin{frame}[fragile]
+\frametitle{the reflog}
+\label{sec-10-7}
+
+
+\tiny
+
+\begin{itemize}
+\item The reflog can show you all the values that HEAD has taken in the past.
+\item Here's a simulated example.
+\item I cloned a repo that had a master and a `foo'
+  branch.  I then checked out \texttt{origin/foo}, ignored all the warnings, and made
+  two commits on what I thought was the ``foo'' branch.  Then I switched back to
+  master and made two normal commits on master before I realised that I had
+  `lost' two commits.
+\item At this point, running \texttt{git reflog show} gives me the following (the most
+  recent HEAD value is first):
+
+\begin{verbatim}
+   86a8ee0 HEAD@{0}: commit: my second commit on master
+   e42c4d0 HEAD@{1}: commit: my first commit on master
+   58c1539 HEAD@{2}: checkout: moving from e2558a9d1527e5a76b39ffede1dc5ca9c650de01 to master
+   e2558a9 HEAD@{3}: commit: second commit on foo
+   1c9dfa0 HEAD@{4}: commit: first commit on foo
+   802f184 HEAD@{5}: checkout: moving from master to origin/foo
+   58c1539 HEAD@{6}: clone: from /tmp/tmp.lv5IqjK0ZI/b
+\end{verbatim}
+\item That \texttt{moving from <SHA>...} is usually a sign that some commits may have been
+  lost.
+\item In this case you can run \texttt{git branch newbranch HEAD@\{3\}} or \texttt{git branch   newbranch e2558a9} to save those commits.
+\end{itemize}
+
+(Notice that the SHA value of \texttt{HEAD@\{3\}} is the same one mentioned in
+the \texttt{moving from <SHA>...} message on the line above it).
+\end{frame}
+\section{Copyright + License}
+\label{sec-11}
+\begin{frame}
+
+\begin{itemize}
+\item \copyright Copyright Sitaram Chamarty, sitaramc@gmail.com.
+\item This documentation is provided under a \href{http://creativecommons.org/licenses/by-nc-sa/3.0/}{Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License}.
+\item However, of necessity, there are code examples within those documents. I believe that the principle of fair use should cover use of those snippets; see especially factors 3 and 4 in the list of factors \href{http://en.wikipedia.org/wiki/Fair_use#Fair_use_under_United_States_law}{here}.
+\item However, if you're not convinced that it would be fair use, then you may consider those code snippets, as well as associated ``comments'' if any, to be under the GPLv2 license.
+\end{itemize}
+\end{frame}
+
+\end{document}
